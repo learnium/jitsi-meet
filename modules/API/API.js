@@ -15,6 +15,7 @@ var XMPPEvents = require("../../service/xmpp/XMPPEvents");
  *              filmStrip: toggleFilmStrip
  *          }}
  */
+var passwordReqCallback = null;
 var commands =
 {
     displayName: APP.UI.inputDisplayNameHandler,
@@ -22,7 +23,19 @@ var commands =
     muteVideo: APP.UI.toggleVideo,
     toggleFilmStrip: APP.UI.toggleFilmStrip,
     toggleChat: APP.UI.toggleChat,
-    toggleContactList: APP.UI.toggleContactList
+    toggleContactList: APP.UI.toggleContactList,
+    passwordRequired: function(pw){
+        passwordReqCallback(pw);
+    },
+    lockRoom: function(key){
+        APP.xmpp.lockRoom(key, function(){
+            console.log("Locked room (via API)");
+        }, function(){
+            console.log("Lock failed (via API)");
+        }, function(){
+            console.log("Lock not supported (via API)");
+        });
+    }
 };
 
 
@@ -40,10 +53,12 @@ var commands =
 var events =
 {
     incomingMessage: false,
-    outgoingMessage:false,
+    outgoingMessage: false,
     displayNameChange: false,
     participantJoined: false,
-    participantLeft: false
+    participantLeft: false,
+    passwordRequired: false,
+    mucJoined: false
 };
 
 var displayName = {};
@@ -155,6 +170,15 @@ function setupListeners() {
     });
     APP.xmpp.addListener(XMPPEvents.SENDING_CHAT_MESSAGE, function (body) {
         APP.API.triggerEvent("outgoingMessage", {"message": body});
+    });
+
+    APP.xmpp.addListener(XMPPEvents.PASSWORD_REQUIRED, function (callback) {
+        APP.API.triggerEvent("passwordRequired", {});
+        passwordReqCallback = callback;
+    });
+
+    APP.xmpp.addListener(XMPPEvents.MUC_JOINED, function (callback) {
+        APP.API.triggerEvent("mucJoined", {});
     });
 }
 
